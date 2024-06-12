@@ -38,24 +38,87 @@ public class Gun : MonoBehaviour {
 
     private void Awake() {
         // 사용할 컴포넌트들의 참조를 가져오기
+        gunAudioPlayer = GetComponent<AudioSource>();
+        bulletLineRenderer = GetComponent<LineRenderer>();
+        
+        // 사용할 점을 두 개로 변경
+        bulletLineRenderer.positionCount = 2;
+        // 라인 렌더러 비활성화
+        bulletLineRenderer.enabled = false;
     }
 
     private void OnEnable() {
         // 총 상태 초기화
+        // 탄창 채우기
+        magAmmo = magCapacity;
+        state = State.Ready;
+        // 총을 쏜 시점 초기화
+        lastFireTime = 0;
     }
 
     // 발사 시도
     public void Fire() {
-
+        if (state == State.Ready && Time.time >= lastFireTime + timeBetFire)
+        {
+            // 마지막 발사 시점 갱신
+            lastFireTime = Time.time;
+            Shot();
+        }
     }
 
     // 실제 발사 처리
     private void Shot() {
+        // 레이캐스트에 의한 충돌 정보를 저장하는 컨테이너
+        RaycastHit hit;
+        // 탄이 맞은 곳을 저장할 변수
+        Vector3 hitPosition = Vector3.zero;
         
+        // 레이캐스트(시작 지점, 방향, 충돌 정보 컨테이너, 사정거리)
+        if (Physics.Raycast(fireTransform.position, fireTransform.forward, out hit, fireDistance))
+        {
+            // 충돌한 경우 상대로부터 IDamageable 오브젝트 가져오기 시도
+            IDamageable target = hit.collider.GetComponent<IDamageable>();
+
+            if (target != null)
+            {
+                // 상대방의 OnDamage 함수를 실행시켜 상대방에 데미지 추가
+                target.OnDamage(damage, hit.point, hit.normal);
+            }
+            
+            // 레이캐스트가 충돌한 위치 저장
+            hitPosition = hit.point;
+        }
+        else
+        {
+            hitPosition = fireTransform.position + fireTransform.forward * fireDistance;
+        }
+        
+        // 발사 이펙트 시작
+        StartCoroutine(ShotEffect(hitPosition));
+        
+        // 남은 탄알 수 -1
+        magAmmo--;
+        if (magAmmo <= 0)
+        {
+            state = State.Empty;
+        }
     }
 
     // 발사 이펙트와 소리를 재생하고 총알 궤적을 그린다
     private IEnumerator ShotEffect(Vector3 hitPosition) {
+        // 총구 화염 효과
+        muzzleFlashEffect.Play();
+        // 탄피 배출 효과
+        shellEjectEffect.Play();
+        
+        // 총격 소리
+        gunAudioPlayer.PlayOneShot(shotClip);
+        
+        // 선의 시작점은 총구 위치
+        bulletLineRenderer.SetPosition(0, fireTransform.position);
+        // 선의 끝점은 입력으로 들어온 충돌 위치
+        bulletLineRenderer.SetPosition(1, hitPosition);
+        
         // 라인 렌더러를 활성화하여 총알 궤적을 그린다
         bulletLineRenderer.enabled = true;
 
