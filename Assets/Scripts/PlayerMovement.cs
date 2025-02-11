@@ -35,7 +35,7 @@ public class PlayerMovement : MonoBehaviour {
     private void Move() 
     {
         // 상대적으로 이동할 거리 계산
-        Vector3 moveDistance = playerInput.move * transform.forward * moveSpeed * Time.deltaTime;
+        Vector3 moveDistance = transform.forward * (playerInput.move * moveSpeed * Time.deltaTime);
         
         // 계산된 moveDistance 만큼 이동
         playerRigidbody.MovePosition(playerRigidbody.position + moveDistance);
